@@ -8,27 +8,31 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.view.View;
+import android.view.Gravity;
 import android.view.animation.DecelerateInterpolator;
-
+import android.widget.TextView;
 
 /**
  * http://circleprogress.osslab.online
  */
-public class CircleProgressBar extends View {
+public class CircleProgressBar extends TextView {
 
     // Properties
     private float progress = 0;
     private float strokeWidth = getResources().getDimension(R.dimen.default_stroke_width);
     private float backgroundStrokeWidth = getResources().getDimension(R.dimen.default_background_stroke_width);
-    private int color = Color.BLACK;
-    private int backgroundColor = Color.GRAY;
+    private int progressColor = Color.BLACK;
+    private int progressBgColor = Color.GRAY;
+    private int backgroundColor = Color.WHITE;
 
     // Object used to draw
     private int startAngle = -90;
     private RectF rectF;
     private Paint backgroundPaint;
-    private Paint foregroundPaint;
+    private Paint progressBgPaint;
+    private Paint progressPaint;
+
+    private IProgressListener progressListener;
 
     //region Constructor & Init Method
     public CircleProgressBar(Context context, AttributeSet attrs) {
@@ -45,35 +49,45 @@ public class CircleProgressBar extends View {
             progress = typedArray.getFloat(R.styleable.CircleProgressBar_progress_value, progress);
             // StrokeWidth
             strokeWidth = typedArray.getDimension(R.styleable.CircleProgressBar_progress_width, strokeWidth);
-            backgroundStrokeWidth = typedArray.getDimension(R.styleable.CircleProgressBar_background_width, backgroundStrokeWidth);
+            backgroundStrokeWidth = typedArray.getDimension(R.styleable.CircleProgressBar_progress_background_width, backgroundStrokeWidth);
             // Color
-            color = typedArray.getInt(R.styleable.CircleProgressBar_progress_color, color);
+            progressColor = typedArray.getInt(R.styleable.CircleProgressBar_progress_color, progressColor);
+            progressBgColor = typedArray.getInt(R.styleable.CircleProgressBar_progress_background_color, progressBgColor);
             backgroundColor = typedArray.getInt(R.styleable.CircleProgressBar_background_color, backgroundColor);
         } finally {
             typedArray.recycle();
         }
 
-        // Init Background
+        // Init progress Background
+        progressBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        progressBgPaint.setColor(progressBgColor);
+        progressBgPaint.setStyle(Paint.Style.STROKE);
+        progressBgPaint.setStrokeWidth(backgroundStrokeWidth);
+
+        // Init progress Foreground
+        progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        progressPaint.setColor(progressColor);
+        progressPaint.setStyle(Paint.Style.STROKE);
+        progressPaint.setStrokeWidth(strokeWidth);
+
+        // Init background color
         backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         backgroundPaint.setColor(backgroundColor);
-        backgroundPaint.setStyle(Paint.Style.STROKE);
-        backgroundPaint.setStrokeWidth(backgroundStrokeWidth);
+        backgroundPaint.setStyle(Paint.Style.FILL_AND_STROKE);
 
-        // Init Foreground
-        foregroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        foregroundPaint.setColor(color);
-        foregroundPaint.setStyle(Paint.Style.STROKE);
-        foregroundPaint.setStrokeWidth(strokeWidth);
+        setGravity(Gravity.CENTER);
+        setBackgroundResource(0);
     }
     //endregion
 
     //region Draw Method
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
         canvas.drawOval(rectF, backgroundPaint);
+        canvas.drawOval(rectF, progressBgPaint);
         float angle = 360 * progress / 100;
-        canvas.drawArc(rectF, startAngle, angle, false, foregroundPaint);
+        canvas.drawArc(rectF, startAngle, angle, false, progressPaint);
+        super.onDraw(canvas);
     }
     //endregion
 
@@ -89,6 +103,14 @@ public class CircleProgressBar extends View {
     }
     //endregion
 
+    public IProgressListener getProgressListener() {
+        return progressListener;
+    }
+
+    public void setProgressListener(IProgressListener progressListener) {
+        this.progressListener = progressListener;
+    }
+
     //region Method Get/Set
     public float getProgress() {
         return progress;
@@ -97,6 +119,9 @@ public class CircleProgressBar extends View {
     public void setProgress(float progress) {
         this.progress = (progress<=100) ? progress : 100;
         invalidate();
+        if (progressListener != null){
+            progressListener.onProgress(progress);
+        }
     }
 
     public float getProgressBarWidth() {
@@ -105,7 +130,7 @@ public class CircleProgressBar extends View {
 
     public void setProgressBarWidth(float strokeWidth) {
         this.strokeWidth = strokeWidth;
-        foregroundPaint.setStrokeWidth(strokeWidth);
+        progressPaint.setStrokeWidth(strokeWidth);
         requestLayout();//Because it should recalculate its bounds
         invalidate();
     }
@@ -116,31 +141,39 @@ public class CircleProgressBar extends View {
 
     public void setBackgroundProgressBarWidth(float backgroundStrokeWidth) {
         this.backgroundStrokeWidth = backgroundStrokeWidth;
-        backgroundPaint.setStrokeWidth(backgroundStrokeWidth);
+        progressBgPaint.setStrokeWidth(backgroundStrokeWidth);
         requestLayout();//Because it should recalculate its bounds
         invalidate();
     }
 
-    public int getColor() {
-        return color;
+    public int getProgressColor() {
+        return progressColor;
     }
 
-    public void setColor(int color) {
-        this.color = color;
-        foregroundPaint.setColor(color);
+    public void setProgressColor(int color) {
+        this.progressColor = color;
+        progressPaint.setColor(color);
         invalidate();
-        requestLayout();
+    }
+
+    public int getProgressBgColor() {
+        return progressBgColor;
+    }
+
+    public void setProgressBgColor(int progressBgColor) {
+        this.progressBgColor = progressBgColor;
+        progressBgPaint.setColor(progressBgColor);
+        invalidate();
     }
 
     public int getBackgroundColor() {
         return backgroundColor;
     }
 
-    public void setBackgroundColor(int backgroundColor) {
+    public void setBackgroundColor(int backgroundColor){
         this.backgroundColor = backgroundColor;
         backgroundPaint.setColor(backgroundColor);
         invalidate();
-        requestLayout();
     }
     //endregion
 
@@ -164,11 +197,15 @@ public class CircleProgressBar extends View {
      * @param progress The progress it should animate to it.
      * @param duration The length of the animation, in milliseconds.
      */
-    public void setProgressWithAnimation(float progress, int duration) {
+    public void setProgressWithAnimation(float progress, long duration) {
         ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(this, "progress", progress);
         objectAnimator.setDuration(duration);
         objectAnimator.setInterpolator(new DecelerateInterpolator());
         objectAnimator.start();
     }
     //endregion
+
+    public interface IProgressListener{
+        void onProgress(float progress);
+    }
 }

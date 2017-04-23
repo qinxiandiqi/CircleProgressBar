@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.annotation.ColorInt;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.SeekBar;
+import android.widget.Toast;
 
 import com.larswerkman.lobsterpicker.OnColorListener;
 import com.larswerkman.lobsterpicker.sliders.LobsterShadeSlider;
@@ -20,7 +21,15 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         circleProgressBar = (CircleProgressBar)findViewById(R.id.circleProgressbar);
-        circleProgressBar.setProgressWithAnimation(65);
+        circleProgressBar.setProgressWithAnimation(100, 3000L);
+        circleProgressBar.setProgressListener(new CircleProgressBar.IProgressListener() {
+            @Override
+            public void onProgress(float progress) {
+                if (progress >= 100){
+                    Toast.makeText(MainActivity.this, "100", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
 
         // PROGRESS
         ((SeekBar)findViewById(R.id.seekBarProgress)).setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -74,8 +83,8 @@ public class MainActivity extends AppCompatActivity {
         ((LobsterShadeSlider)findViewById(R.id.shadeslider)).addOnColorListener(new OnColorListener() {
             @Override
             public void onColorChanged(@ColorInt int color) {
-                circleProgressBar.setColor(color);
-                circleProgressBar.setBackgroundColor(adjustAlpha(color, 0.3f));
+                circleProgressBar.setProgressColor(color);
+                circleProgressBar.setProgressBgColor(adjustAlpha(color, 0.3f));
             }
 
             @Override

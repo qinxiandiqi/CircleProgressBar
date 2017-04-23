@@ -19,8 +19,9 @@
             android:id="@+id/circleProgressbar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            circle:background_color="#b6bbd8"
-            circle:background_width="10dp"
+            android:text="跳过\n广告"
+            circle:progress_background_color="#b6bbd8"
+            circle:progress_background_width="7dp"
             circle:progress_color="#3f51b5"
             circle:progress_width="20dp" />
 
